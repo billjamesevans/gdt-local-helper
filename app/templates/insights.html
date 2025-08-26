@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h4">Insights — {{ project.title }}</h1>
+<div class="list-group">
+  {% for i in items %}
+  <div class="list-group-item">
+    <div class="d-flex justify-content-between">
+      <div>
+        <div class="fw-bold">{{ i.title }}</div>
+        <div class="small text-muted">{{ i.detail }}</div>
+      </div>
+      {% if i.requirement_id %}
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.requirement_detail', id=i.requirement_id) }}">Open</a>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="list-group-item">No insights for this project yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

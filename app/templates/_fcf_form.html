@@ -1,0 +1,111 @@
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">FCF Builder</div>
+      <div class="card-body">
+        <div class="mb-2">
+          <label class="form-label">Title</label>
+          <input class="form-control" name="title" required placeholder="e.g., Mounting hole position">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Feature Name</label>
+          <input class="form-control" name="feature_name" placeholder="e.g., Ø6 bolt holes (4x)">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Symbol</label>
+          <select class="form-select" name="symbol_key" hx-post="{{ url_for('main.fcf_preview') }}" hx-trigger="change, input from:closest form" hx-target="#preview" hx-swap="innerHTML">
+            <optgroup label="Location">
+              <option value="position">Position</option>
+              <option value="concentricity">Concentricity (legacy)</option>
+              <option value="symmetry">Symmetry (legacy)</option>
+            </optgroup>
+            <optgroup label="Form">
+              <option value="flatness">Flatness</option>
+              <option value="straightness">Straightness</option>
+              <option value="circularity">Circularity</option>
+              <option value="cylindricity">Cylindricity</option>
+            </optgroup>
+            <optgroup label="Orientation">
+              <option value="perpendicularity">Perpendicularity</option>
+              <option value="parallelism">Parallelism</option>
+              <option value="angularity">Angularity</option>
+            </optgroup>
+            <optgroup label="Profile">
+              <option value="profile_line">Profile of a Line</option>
+              <option value="profile_surface">Profile of a Surface</option>
+            </optgroup>
+            <optgroup label="Runout">
+              <option value="circular_runout">Circular Runout</option>
+              <option value="total_runout">Total Runout</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label">Tolerance</label>
+            <input class="form-control" name="tolerance_value" placeholder="e.g., 0.2" hx-post="{{ url_for('main.fcf_preview') }}" hx-trigger="keyup changed delay:300ms, input from:closest form" hx-target="#preview">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Unit</label>
+            <select class="form-select" name="tolerance_unit" hx-post="{{ url_for('main.fcf_preview') }}" hx-trigger="change, input from:closest form" hx-target="#preview">
+              <option value="mm">mm</option>
+              <option value="in">in</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-check form-switch my-2">
+          <input class="form-check-input" type="checkbox" id="diameter" name="diameter_modifier_bool" hx-post="{{ url_for('main.fcf_preview') }}" hx-trigger="change, input from:closest form" hx-target="#preview">
+          <label class="form-check-label" for="diameter">⌀ Diameter zone</label>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Material Condition</label>
+          <select class="form-select" name="material_condition" hx-post="{{ url_for('main.fcf_preview') }}" hx-trigger="change, input from:closest form" hx-target="#preview">
+            <option value="">—</option>
+            <option value="RFS">RFS</option>
+            <option value="MMC">MMC</option>
+            <option value="LMC">LMC</option>
+          </select>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Datums (A–Z)</label>
+          <div class="input-group">
+            <select class="form-select" name="datum_refs[]" multiple size="4" hx-post="{{ url_for('main.fcf_preview') }}" hx-trigger="change, input from:closest form" hx-target="#preview">
+              {% for d in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' %}
+              <option value="{{ d }}">{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Zone Shape</label>
+          <select class="form-select" name="zone_shape">
+            <option value="">—</option>
+            <option value="cylindrical">Cylindrical</option>
+            <option value="spherical">Spherical</option>
+            <option value="planar">Planar</option>
+          </select>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Notes</label>
+          <textarea class="form-control" name="notes" rows="2"></textarea>
+        </div>
+
+        <button class="btn btn-primary mt-1" type="submit">Add Requirement</button>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Live Preview &amp; Explanation</div>
+      <div class="card-body" id="preview">
+        {% include '_fcf_preview.html' with context %}
+      </div>
+    </div>
+  </div>
+</div>

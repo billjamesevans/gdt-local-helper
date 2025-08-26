@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h4">Symbols</h1>
+<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+  {% for s in kb.symbols %}
+  <div class="col">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="h5">{{ s.name }}</div>
+        <div class="display-6">{{ s.unicode_glyph_or_svg }}</div>
+        <div class="small text-muted">{{ s.what_it_controls }}</div>
+      </div>
+      <div class="card-footer">
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#symModal{{ s.key|replace(' ','_') }}">Learn more</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="symModal{{ s.key|replace(' ','_') }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ s.name }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>What it controls:</strong> {{ s.what_it_controls }}</p>
+          <p><strong>Zone shape:</strong> {{ s.zone_shape }}</p>
+          <p><strong>Typical use:</strong> {{ s.typical_use }}</p>
+          <p><strong>Do/Don't:</strong></p>
+          <ul>
+            {% for dd in s.do_dont %}<li>{{ dd }}</li>{% endfor %}
+          </ul>
+          <p><strong>Mini example:</strong> {{ s.mini_example }}</p>
+          <p class="text-muted small">{{ s.figure }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

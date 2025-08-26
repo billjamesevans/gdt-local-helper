@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h5 mb-3">Viewer — {{ drawing.original_name }} (Page {{ page+1 }}/{{ drawing.page_count }})</h1>
+<div class="d-flex gap-2 mb-2">
+  <div class="btn-group">
+    {% for p in range(drawing.page_count) %}
+      <a class="btn btn-sm {% if p==page %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{{ url_for('main.drawing_view', id=drawing.id) }}?page={{p}}">{{ p+1 }}</a>
+    {% endfor %}
+  </div>
+  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.drawing_annotate', id=drawing.id) }}?page={{page}}"><i class="bi bi-vector-pen"></i> Annotate</a>
+</div>
+
+<div class="viewer-container border rounded p-2">
+  <canvas id="pdfCanvas" class="w-100"></canvas>
+  <svg id="overlay" class="annotation-overlay" preserveAspectRatio="none"></svg>
+</div>
+
+<div id="drawer" class="mt-3"></div>
+
+<script src="{{ config.PDFJS_JS }}"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "{{ config.PDFJS_WORKER }}";
+  const url = "{{ url_for('main.uploaded_file', filename=drawing.filename) }}";
+  const pageIndex = {{ page }};
+  const overlay = document.getElementById('overlay');
+  const canvas = document.getElementById('pdfCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function drawAnnotations(width, height) {
+    overlay.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    overlay.innerHTML = '';
+    const anns = {{ annotations|tojson }};
+    anns.forEach(a => {
+      if (a.kind === 'box') {
+        const x = a.coords_json.x * width;
+        const y = a.coords_json.y * height;
+        const w = a.coords_json.w * width;
+        const h = a.coords_json.h * height;
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', w);
+        rect.setAttribute('height', h);
+        rect.setAttribute('fill', 'rgba(0,0,0,0)');
+        rect.setAttribute('stroke', a.color_hex || '#ff0066');
+        rect.setAttribute('stroke-dasharray', '6,6');
+        rect.style.cursor = 'pointer';
+        rect.addEventListener('click', () => openRequirement(a.requirement_id));
+        overlay.appendChild(rect);
+      } else if (a.kind === 'polygon') {
+        const pts = a.coords_json.points.map(p => (p.x * width) + ',' + (p.y * height)).join(' ');
+        const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        poly.setAttribute('points', pts);
+        poly.setAttribute('fill', 'rgba(0,0,0,0)');
+        poly.setAttribute('stroke', a.color_hex || '#0d6efd');
+        poly.setAttribute('stroke-dasharray', '6,6');
+        poly.style.cursor = 'pointer';
+        poly.addEventListener('click', () => openRequirement(a.requirement_id));
+        overlay.appendChild(poly);
+      }
+    });
+  }
+
+  function openRequirement(id) {
+    fetch(`/requirements/${id}/card`).then(r => r.text()).then(html => {
+      document.getElementById('drawer').innerHTML = html;
+      document.getElementById('drawer').scrollIntoView({behavior:'smooth'});
+    });
+  }
+
+  async function renderPage() {
+    const loadingTask = pdfjsLib.getDocument(url);
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(pageIndex + 1);
+    const viewport = page.getViewport({ scale: 1.5 });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const renderContext = { canvasContext: ctx, viewport: viewport };
+    await page.render(renderContext).promise;
+    drawAnnotations(viewport.width, viewport.height);
+  }
+  renderPage();
+</script>
+{% endblock %}
