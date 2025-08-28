@@ -1,0 +1,10 @@
+{% for a in annotations %}
+<div class="list-group-item">
+  <div class="d-flex justify-content-between align-items-center">
+    <span>{{ a.label or a.kind }} — req #{{ a.requirement_id }}</span>
+    <span class="badge" style="background: {{ a.color_hex or '#aaa' }}">&nbsp;</span>
+  </div>
+</div>
+{% else %}
+<div class="list-group-item">None yet.</div>
+{% endfor %}

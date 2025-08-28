@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h4">User Guide</h1>
+<ol>
+  <li><strong>Create a Project:</strong> give it a title, customer, revision, and units.</li>
+  <li><strong>Upload drawing PDFs:</strong> go to the project page → <em>Drawings</em> → upload. Only PDFs up to 25 MB.</li>
+  <li><strong>Add GD&amp;T requirements:</strong> open <em>Requirements</em>, use the <em>FCF Builder</em> on the left. As you choose a symbol, tolerance, material condition, and datums, the preview updates. Click <em>Add Requirement</em>.</li>
+  <li><strong>Map annotations:</strong> open <em>Annotate</em> on a drawing, pick a requirement, select <em>Box</em> or <em>Polygon</em>, draw on the page, and <em>Save Annotation</em>.</li>
+  <li><strong>Click through:</strong> in <em>View</em>, click any highlighted region to open the linked requirement + plain-English explanation.</li>
+  <li><strong>Symbols palette:</strong> browse <em>Symbols</em> for meanings, examples, and tips.</li>
+  <li><strong>Insights:</strong> open <em>Insights</em> to see bonus tolerance at MMC/LMC, datum completeness, legacy control warnings, and more.</li>
+  <li><strong>Export:</strong> use <code>/export/csv?project=&lt;id&gt;</code> for CSV; use <code>/export/report?project=&lt;id&gt;</code> for a PDF summary.</li>
+</ol>
+<p class="small text-muted">Tip: This is a single-user, local-only tool. Avoid exposing it beyond 127.0.0.1.</p>
+{% endblock %}

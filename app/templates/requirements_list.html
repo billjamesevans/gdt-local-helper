@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4">{{ 'Search Results' if search_mode else 'Requirements' }}</h1>
+  {% if project %}
+    <a class="btn btn-primary" href="{{ url_for('main.project_requirements', id=project.id) }}"><i class="bi bi-plus"></i> Add Requirement</a>
+  {% endif %}
+</div>
+
+{% if project %}
+<form method="post" class="mb-4">
+  {% include '_fcf_form.html' %}
+</form>
+{% endif %}
+
+<div class="list-group">
+  {% for r in requirements %}
+  <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="{{ url_for('main.requirement_detail', id=r.id) }}">
+    <div>
+      <div class="fw-bold">{{ r.title }}</div>
+      <div class="text-muted small">{{ r.fcf_text or '' }}</div>
+    </div>
+    <span class="badge text-bg-light">{{ r.symbol_key }}</span>
+  </a>
+  {% else %}
+  <div class="alert alert-info">No requirements yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

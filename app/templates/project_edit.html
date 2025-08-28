@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h4">{{ 'Edit Project' if project else 'New Project' }}</h1>
+<form method="post" class="mt-3">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Title</label>
+      <input name="title" class="form-control" required value="{{ project.title if project else '' }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Customer</label>
+      <input name="customer" class="form-control" value="{{ project.customer if project else '' }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Revision</label>
+      <input name="revision" class="form-control" value="{{ project.revision if project else '' }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Units</label>
+      <select name="units" class="form-select">
+        {% for u in ['mm','in'] %}
+        <option value="{{u}}" {% if project and project.units==u %}selected{% endif %}>{{u}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-12">
+      <label class="form-label">Notes</label>
+      <textarea name="notes" class="form-control" rows="3">{{ project.notes if project else '' }}</textarea>
+    </div>
+  </div>
+  <div class="mt-3">
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-secondary" href="{{ url_for('main.index') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

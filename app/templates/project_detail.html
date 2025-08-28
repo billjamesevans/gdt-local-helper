@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h4 mb-0">{{ project.title }}</h1>
+    <div class="text-muted small">Customer: {{ project.customer or '—' }} • Rev {{ project.revision or '—' }} • Units: {{ project.units }}</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('main.project_edit', id=project.id) }}"><i class="bi bi-pencil"></i> Edit</a>
+    <a class="btn btn-outline-primary" href="{{ url_for('main.symbols') }}"><i class="bi bi-grid"></i> Symbols</a>
+    <a class="btn btn-success" href="{{ url_for('main.insights') }}?project={{ project.id }}"><i class="bi bi-lightbulb"></i> Insights</a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Drawings</div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('main.project_drawings', id=project.id) }}" class="mb-3">
+          <div class="input-group">
+            <input class="form-control" type="file" name="pdf" accept="application/pdf" required>
+            <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
+          </div>
+          <div class="form-text">PDF only, max 25 MB.</div>
+        </form>
+        <ul class="list-group small">
+          {% for d in drawings %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-bold">{{ d.original_name }}</div>
+              <div class="text-muted">Pages: {{ d.page_count }} • Uploaded {{ d.uploaded_at.strftime('%Y-%m-%d') }}</div>
+            </div>
+            <div class="btn-group">
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.drawing_view', id=d.id) }}"><i class="bi bi-eye"></i> View</a>
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.drawing_annotate', id=d.id) }}"><i class="bi bi-vector-pen"></i> Annotate</a>
+            </div>
+          </li>
+          {% else %}
+          <li class="list-group-item">No drawings yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Requirements</span>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.project_requirements', id=project.id) }}"><i class="bi bi-plus"></i> Add Requirement</a>
+      </div>
+      <div class="card-body">
+        <ul class="list-group small">
+          {% for r in requirements %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-bold"><a href="{{ url_for('main.requirement_detail', id=r.id) }}">{{ r.title }}</a></div>
+              <div class="text-muted">{{ r.fcf_text or '' }}</div>
+            </div>
+            <span class="badge text-bg-light">{{ r.symbol_key }}</span>
+          </li>
+          {% else %}
+          <li class="list-group-item">No requirements yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

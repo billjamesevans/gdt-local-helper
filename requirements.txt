@@ -1,0 +1,14 @@
+# Core
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.31
+Flask-Migrate==4.0.7
+marshmallow==3.21.2
+python-dotenv==1.0.1
+# Forms / CSRF
+Flask-WTF==1.2.1
+# PDF / Files
+reportlab==4.2.2
+PyPDF2==3.0.1
+# Tests
+pytest==8.3.2

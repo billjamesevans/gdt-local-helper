@@ -1,0 +1,130 @@
+{
+  "symbols": [
+    {
+      "key": "position",
+      "name": "Position",
+      "unicode_glyph_or_svg": "\u27c2\u29bf",
+      "what_it_controls": "Location of a feature relative to datums",
+      "zone_shape": "cylindrical",
+      "typical_use": "Holes, pins, patterns relative to datum reference frame",
+      "do_dont": [
+        "Do reference a proper datum set",
+        "Don't forget \u2300 for holes"
+      ],
+      "mini_example": "\u23000.2 | M | A | B | C",
+      "figure": "A hole located relative to datums A|B|C"
+    },
+    {
+      "key": "flatness",
+      "name": "Flatness",
+      "unicode_glyph_or_svg": "\u2394",
+      "what_it_controls": "Form of a surface independent of datums",
+      "zone_shape": "planar",
+      "typical_use": "Mating faces, pads",
+      "do_dont": [
+        "Do apply to surfaces where straightness isn't sufficient",
+        "Don't use with datums"
+      ],
+      "mini_example": "0.1",
+      "figure": "Two parallel planes 0.1 apart"
+    },
+    {
+      "key": "profile_surface",
+      "name": "Profile of a Surface",
+      "unicode_glyph_or_svg": "\u223f",
+      "what_it_controls": "3D form relative to basic dimensions; can include datums",
+      "zone_shape": "cylindrical",
+      "typical_use": "Freeform or complex surfaces",
+      "do_dont": [
+        "Do use to control form and sometimes orientation/location",
+        "Don't pair with redundant form controls"
+      ],
+      "mini_example": "0.5 | A | B",
+      "figure": "Uniform boundary around the true surface"
+    },
+    {
+      "key": "circular_runout",
+      "name": "Circular Runout",
+      "unicode_glyph_or_svg": "\u25f4",
+      "what_it_controls": "Composite of form and orientation for each circular element",
+      "zone_shape": "cylindrical",
+      "typical_use": "Rotating parts",
+      "do_dont": [
+        "Do measure per revolution",
+        "Don't confuse with total runout"
+      ],
+      "mini_example": "0.02 | A",
+      "figure": "TIR measured at each cross-section"
+    },
+    {
+      "key": "total_runout",
+      "name": "Total Runout",
+      "unicode_glyph_or_svg": "\u25ce",
+      "what_it_controls": "Composite of all circular runout elements across the full surface",
+      "zone_shape": "cylindrical",
+      "typical_use": "Shafts, rotating assemblies",
+      "do_dont": [
+        "Do evaluate across the full length",
+        "Don't use when circular runout suffices"
+      ],
+      "mini_example": "0.05 | A",
+      "figure": "TIR across complete surface"
+    },
+    {
+      "key": "perpendicularity",
+      "name": "Perpendicularity",
+      "unicode_glyph_or_svg": "\u27c2",
+      "what_it_controls": "Orientation of a surface or axis at 90\u00b0",
+      "zone_shape": "planar",
+      "typical_use": "Faces orthogonal to datum",
+      "do_dont": [
+        "Do reference a planar datum",
+        "Don't omit datum where needed"
+      ],
+      "mini_example": "0.1 | A",
+      "figure": "Zone of two planes perpendicular to A"
+    },
+    {
+      "key": "concentricity",
+      "name": "Concentricity (legacy)",
+      "unicode_glyph_or_svg": "\u25ce (legacy)",
+      "what_it_controls": "Median points of opposed elements about a datum axis",
+      "zone_shape": "cylindrical",
+      "typical_use": "Legacy; rarely recommended",
+      "do_dont": [
+        "Prefer position with datums",
+        "Avoid due to inspection difficulty"
+      ],
+      "mini_example": "0.1 | A",
+      "figure": "Not recommended in Y14.5-2018"
+    },
+    {
+      "key": "symmetry",
+      "name": "Symmetry (legacy)",
+      "unicode_glyph_or_svg": "\u2261 (legacy)",
+      "what_it_controls": "Median plane of opposed elements",
+      "zone_shape": "planar",
+      "typical_use": "Legacy; rarely recommended",
+      "do_dont": [
+        "Prefer position/profile",
+        "Avoid due to inspection burden"
+      ],
+      "mini_example": "0.2 | A",
+      "figure": "Not recommended in Y14.5-2018"
+    }
+  ],
+  "modifiers": {
+    "MMC": {
+      "glyph": "\u24c2",
+      "name": "Max Material Condition"
+    },
+    "LMC": {
+      "glyph": "\u24c1",
+      "name": "Least Material Condition"
+    },
+    "RFS": {
+      "glyph": "\u24c8",
+      "name": "Regardless of Feature Size"
+    }
+  }
+}

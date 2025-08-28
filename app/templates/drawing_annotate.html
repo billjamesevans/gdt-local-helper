@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="h5 mb-3">Annotate — {{ drawing.original_name }} (Page {{ page+1 }}/{{ drawing.page_count }})</h1>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="viewer-container border rounded p-2">
+      <canvas id="pdfCanvas" class="w-100"></canvas>
+      <svg id="overlay" class="annotation-overlay" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="small text-muted mt-2">Tools: click "Box" then drag; or click "Polygon" then click points (double-click to finish).</div>
+    <div class="mt-2 d-flex gap-2">
+      <button id="toolBox" class="btn btn-sm btn-outline-primary"><i class="bi bi-bounding-box"></i> Box</button>
+      <button id="toolPoly" class="btn btn-sm btn-outline-primary"><i class="bi bi-signpost-split"></i> Polygon</button>
+      <button id="toolClear" class="btn btn-sm btn-outline-secondary">Clear Current</button>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">Link to Requirement</div>
+      <div class="card-body">
+        <div class="mb-2">
+          <label class="form-label">Requirement</label>
+          <select id="reqId" class="form-select">
+            {% for r in requirements %}
+            <option value="{{ r.id }}">{{ r.title }} — {{ r.symbol_key }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Label</label>
+          <input id="annLabel" class="form-control" placeholder="Optional label">
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Color</label>
+          <input id="annColor" class="form-control" type="color" value="#ff0066">
+        </div>
+        <button id="saveAnn" class="btn btn-primary w-100"><i class="bi bi-save"></i> Save Annotation</button>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header">This Page Annotations</div>
+      <div id="annList" class="list-group list-group-flush small">
+        {% include '_annotation_list.html' with context %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ config.PDFJS_JS }}"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "{{ config.PDFJS_WORKER }}";
+  const url = "{{ url_for('main.uploaded_file', filename=drawing.filename) }}";
+  const pageIndex = {{ page }};
+  const overlay = document.getElementById('overlay');
+  const canvas = document.getElementById('pdfCanvas');
+  const ctx = canvas.getContext('2d');
+  const tool = { mode: null, start: null, poly: [] };
+
+  function drawAnnotations(width, height) {
+    overlay.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    overlay.innerHTML = '';
+    const anns = {{ annotations|tojson }};
+    anns.forEach(a => {
+      if (a.kind === 'box') {
+        const x = a.coords_json.x * width;
+        const y = a.coords_json.y * height;
+        const w = a.coords_json.w * width;
+        const h = a.coords_json.h * height;
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', w);
+        rect.setAttribute('height', h);
+        rect.setAttribute('fill', 'rgba(0,0,0,0)');
+        rect.setAttribute('stroke', a.color_hex || '#ff0066');
+        rect.setAttribute('stroke-dasharray', '6,6');
+        overlay.appendChild(rect);
+      } else if (a.kind === 'polygon') {
+        const pts = a.coords_json.points.map(p => (p.x * width) + ',' + (p.y * height)).join(' ');
+        const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        poly.setAttribute('points', pts);
+        poly.setAttribute('fill', 'rgba(0,0,0,0)');
+        poly.setAttribute('stroke', a.color_hex || '#0d6efd');
+        poly.setAttribute('stroke-dasharray', '6,6');
+        overlay.appendChild(poly);
+      }
+    });
+  }
+
+  function pointerPos(evt) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (evt.clientX - rect.left) / rect.width;
+    const y = (evt.clientY - rect.top) / rect.height;
+    return { x, y };
+  }
+
+  document.getElementById('toolBox').onclick = () => { tool.mode = 'box'; tool.start = null; tool.poly = []; };
+  document.getElementById('toolPoly').onclick = () => { tool.mode = 'polygon'; tool.poly = []; };
+  document.getElementById('toolClear').onclick = () => { tool.mode = null; tool.start = null; tool.poly = []; drawAnnotations(canvas.width, canvas.height); };
+
+  overlay.addEventListener('mousedown', (evt) => {
+    if (tool.mode === 'box') {
+      tool.start = pointerPos(evt);
+    }
+  });
+  overlay.addEventListener('mousemove', (evt) => {
+    if (tool.mode === 'box' && tool.start) {
+      const cur = pointerPos(evt);
+      const x = Math.min(tool.start.x, cur.x), y = Math.min(tool.start.y, cur.y);
+      const w = Math.abs(tool.start.x - cur.x), h = Math.abs(tool.start.y - cur.y);
+      drawAnnotations(canvas.width, canvas.height);
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x * canvas.width);
+      rect.setAttribute('y', y * canvas.height);
+      rect.setAttribute('width', w * canvas.width);
+      rect.setAttribute('height', h * canvas.height);
+      rect.setAttribute('fill', 'rgba(0,0,0,0)');
+      rect.setAttribute('stroke', '#198754');
+      rect.setAttribute('stroke-dasharray', '4,4');
+      overlay.appendChild(rect);
+    }
+  });
+  overlay.addEventListener('mouseup', (evt) => {
+    if (tool.mode === 'box' && tool.start) {
+      const cur = pointerPos(evt);
+      const x = Math.min(tool.start.x, cur.x), y = Math.min(tool.start.y, cur.y);
+      const w = Math.abs(tool.start.x - cur.x), h = Math.abs(tool.start.y - cur.y);
+      tool.box = {x,y,w,h};
+      tool.start = null;
+    }
+  });
+  overlay.addEventListener('click', (evt) => {
+    if (tool.mode === 'polygon') {
+      const p = pointerPos(evt);
+      // double-click detection to finish polygon
+      const t = Date.now();
+      if (tool.last && (t - tool.last) < 300) {
+        tool.finished = true;
+      } else {
+        tool.poly.push(p);
+      }
+      tool.last = t;
+      drawAnnotations(canvas.width, canvas.height);
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      const pts = tool.poly.map(q => (q.x * canvas.width) + ',' + (q.y * canvas.height)).join(' ');
+      path.setAttribute('points', pts);
+      path.setAttribute('fill', 'rgba(0,0,0,0)');
+      path.setAttribute('stroke', '#198754');
+      path.setAttribute('stroke-dasharray', '4,4');
+      overlay.appendChild(path);
+    }
+  });
+
+  document.getElementById('saveAnn').onclick = async () => {
+    const reqId = parseInt(document.getElementById('reqId').value);
+    const label = document.getElementById('annLabel').value;
+    const color = document.getElementById('annColor').value || '#ff0066';
+    let payload = null;
+    if (tool.mode === 'box' && tool.box) {
+      payload = {kind:'box', coords_json: tool.box};
+    } else if (tool.mode === 'polygon' && tool.poly.length >= 3) {
+      payload = {kind:'polygon', coords_json: {points: tool.poly}};
+    } else {
+      alert('Draw a box or polygon first. Double-click to finish a polygon.');
+      return;
+    }
+    const res = await fetch('/annotations', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        requirement_id: reqId,
+        drawing_id: {{ drawing.id }},
+        page_index: {{ page }},
+        kind: payload.kind,
+        coords_json: payload.coords_json,
+        label: label,
+        color_hex: color
+      })
+    });
+    if (res.ok) {
+      // Refresh list & overlay
+      const listHtml = await (await fetch(`/annotations/list?drawing_id={{ drawing.id }}&page_index={{ page }}`)).text();
+      document.getElementById('annList').innerHTML = listHtml;
+      // Append to local annotations & redraw
+      const anns = {{ annotations|tojson }};
+      const body = await res.json();
+      payload.color_hex = color;
+      payload.label = label;
+      payload.requirement_id = reqId;
+      anns.push({ ...payload, drawing_id: {{ drawing.id }}, page_index: {{ page }} });
+      window.location.reload();
+    } else {
+      alert('Failed to save annotation.');
+    }
+  };
+
+  async function renderPage() {
+    const loadingTask = pdfjsLib.getDocument(url);
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(pageIndex + 1);
+    const viewport = page.getViewport({ scale: 1.5 });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const renderContext = { canvasContext: ctx, viewport: viewport };
+    await page.render(renderContext).promise;
+    drawAnnotations(viewport.width, viewport.height);
+  }
+  renderPage();
+</script>
+{% endblock %}
