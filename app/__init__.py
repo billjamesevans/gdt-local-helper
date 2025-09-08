@@ -23,7 +23,12 @@ def create_app():
 
     # Init extensions
     db.init_app(app)
-    migrate.init_app(app, db, render_as_batch=True)  # render_as_batch: smooth SQLite schema changes
+    migrate.init_app(
+        app,
+        db,
+        render_as_batch=True,
+        directory=os.path.abspath(os.path.join(app.root_path, "..", "migrations")),
+    )  # render_as_batch: smooth SQLite schema changes
     csrf.init_app(app)
 
     # Bind host warning
