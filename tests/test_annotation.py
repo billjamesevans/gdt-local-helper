@@ -1,9 +1,9 @@
 import json
-from app import db, create_app
+from app import db
 from app.models import Project, Drawing, Requirement, Annotation
 
 def test_annotation_hit_polygon(client):
-    app = create_app()
+    app = client.application
     with app.app_context():
         p = Project(title='T', units='mm')
         db.session.add(p); db.session.commit()

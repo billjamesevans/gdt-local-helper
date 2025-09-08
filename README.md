@@ -9,15 +9,19 @@ A single-user, local-only Flask web app to organize GD&T requirements against dr
 ## Quickstart
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+# Install uv (https://astral.sh/uv) if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create a virtual environment and install dependencies
+uv venv
+uv pip install -r requirements.txt
 
 # Initialize database (SQLite by default)
-flask db upgrade
-flask seed
+uv run flask db upgrade
+uv run flask seed
 
 # Run (binds to 127.0.0.1)
-flask run
+uv run flask run
 ```
 
 Open http://127.0.0.1:5000/
@@ -56,7 +60,7 @@ Inside the app, open **Help → User Guide** (top-right) for a step-by-step work
 ## Tests
 
 ```bash
-pytest -q
+uv run pytest -q
 ```
 
 Tests cover:
