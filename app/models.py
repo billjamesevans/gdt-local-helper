@@ -32,6 +32,8 @@ class Drawing(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('project.id', ondelete='CASCADE'), nullable=False)
     filename = db.Column(db.String(255), nullable=False)  # stored filename
     original_name = db.Column(db.String(255), nullable=False)
+    title = db.Column(db.String(255), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
     page_count = db.Column(db.Integer, default=1, nullable=False)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 

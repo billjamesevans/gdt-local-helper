@@ -8,7 +8,7 @@ class Settings:
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH_MB', '25')) * 1024 * 1024  # bytes
 
-    WTF_CSRF_ENABLED = True
+    WTF_CSRF_ENABLED = os.getenv('WTF_CSRF_ENABLED', 'true').lower() not in ('0','false','no')
 
     # PDF.js CDN (adjust if you need to pin a different version)
     PDFJS_JS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.3.136/pdf.min.js'

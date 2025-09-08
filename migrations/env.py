@@ -1,10 +1,19 @@
+# migrations/env.py
 from __future__ import with_statement
 from alembic import context
 from logging.config import fileConfig
 from flask import current_app
+import os
+
 
 config = context.config
-fileConfig(config.config_file_name)
+
+# Only load logging config if present
+if config.config_file_name and os.path.exists(config.config_file_name):
+    fileConfig(config.config_file_name)
+
+# >>> Add this line <<<
+config.set_main_option("sqlalchemy.url", current_app.config["SQLALCHEMY_DATABASE_URI"])
 
 target_metadata = current_app.extensions['migrate'].db.metadata
 
@@ -28,8 +37,3 @@ def run_migrations_online():
         )
         with context.begin_transaction():
             context.run_migrations()
-
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1 class="h5 mb-3">Annotate — {{ drawing.original_name }} (Page {{ page+1 }}/{{ drawing.page_count }})</h1>
+<h1 class="h5 mb-3">Annotate — {{ drawing.title or drawing.original_name }} (Page {{ page+1 }}/{{ drawing.page_count }})</h1>
 <div class="row g-3">
   <div class="col-lg-8">
     <div class="viewer-container border rounded p-2">
@@ -49,7 +49,6 @@
 
 <script src="{{ config.PDFJS_JS }}"></script>
 <script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "{{ config.PDFJS_WORKER }}";
   const url = "{{ url_for('main.uploaded_file', filename=drawing.filename) }}";
   const pageIndex = {{ page }};
   const overlay = document.getElementById('overlay');
@@ -57,10 +56,25 @@
   const ctx = canvas.getContext('2d');
   const tool = { mode: null, start: null, poly: [] };
 
+  function getViewportEl() {
+    return document.getElementById('pdfCanvas').style.display === 'none'
+      ? document.getElementById('pdfEmbed')
+      : document.getElementById('pdfCanvas');
+  }
+
   function drawAnnotations(width, height) {
     overlay.setAttribute('viewBox', `0 0 ${width} ${height}`);
     overlay.innerHTML = '';
-    const anns = {{ annotations|tojson }};
+    // Add a transparent hit-rect so the SVG captures pointer events everywhere
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    hit.setAttribute('x', 0);
+    hit.setAttribute('y', 0);
+    hit.setAttribute('width', width);
+    hit.setAttribute('height', height);
+    hit.setAttribute('fill', 'transparent');
+    hit.style.pointerEvents = 'all';
+    overlay.appendChild(hit);
+    const anns = {{ annotations_json|tojson }};
     anns.forEach(a => {
       if (a.kind === 'box') {
         const x = a.coords_json.x * width;
@@ -89,7 +103,7 @@
   }
 
   function pointerPos(evt) {
-    const rect = canvas.getBoundingClientRect();
+    const rect = getViewportEl().getBoundingClientRect();
     const x = (evt.clientX - rect.left) / rect.width;
     const y = (evt.clientY - rect.top) / rect.height;
     return { x, y };
@@ -109,12 +123,15 @@
       const cur = pointerPos(evt);
       const x = Math.min(tool.start.x, cur.x), y = Math.min(tool.start.y, cur.y);
       const w = Math.abs(tool.start.x - cur.x), h = Math.abs(tool.start.y - cur.y);
-      drawAnnotations(canvas.width, canvas.height);
+      const el = getViewportEl();
+      drawAnnotations(el.clientWidth || el.width, el.clientHeight || el.height);
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', x * canvas.width);
-      rect.setAttribute('y', y * canvas.height);
-      rect.setAttribute('width', w * canvas.width);
-      rect.setAttribute('height', h * canvas.height);
+      const vw = el.clientWidth || el.width;
+      const vh = el.clientHeight || el.height;
+      rect.setAttribute('x', x * vw);
+      rect.setAttribute('y', y * vh);
+      rect.setAttribute('width', w * vw);
+      rect.setAttribute('height', h * vh);
       rect.setAttribute('fill', 'rgba(0,0,0,0)');
       rect.setAttribute('stroke', '#198754');
       rect.setAttribute('stroke-dasharray', '4,4');
@@ -141,9 +158,13 @@
         tool.poly.push(p);
       }
       tool.last = t;
-      drawAnnotations(canvas.width, canvas.height);
+      const el = getViewportEl();
+      drawAnnotations(el.clientWidth || el.width, el.clientHeight || el.height);
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-      const pts = tool.poly.map(q => (q.x * canvas.width) + ',' + (q.y * canvas.height)).join(' ');
+      const el2 = getViewportEl();
+      const vw2 = el2.clientWidth || el2.width;
+      const vh2 = el2.clientHeight || el2.height;
+      const pts = tool.poly.map(q => (q.x * vw2) + ',' + (q.y * vh2)).join(' ');
       path.setAttribute('points', pts);
       path.setAttribute('fill', 'rgba(0,0,0,0)');
       path.setAttribute('stroke', '#198754');
@@ -167,7 +188,7 @@
     }
     const res = await fetch('/annotations', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: {'Content-Type':'application/json', 'X-CSRFToken': getCsrfToken()},
       body: JSON.stringify({
         requirement_id: reqId,
         drawing_id: {{ drawing.id }},
@@ -183,7 +204,7 @@
       const listHtml = await (await fetch(`/annotations/list?drawing_id={{ drawing.id }}&page_index={{ page }}`)).text();
       document.getElementById('annList').innerHTML = listHtml;
       // Append to local annotations & redraw
-      const anns = {{ annotations|tojson }};
+      const anns = {{ annotations_json|tojson }};
       const body = await res.json();
       payload.color_hex = color;
       payload.label = label;
@@ -196,15 +217,39 @@
   };
 
   async function renderPage() {
-    const loadingTask = pdfjsLib.getDocument(url);
-    const pdf = await loadingTask.promise;
-    const page = await pdf.getPage(pageIndex + 1);
-    const viewport = page.getViewport({ scale: 1.5 });
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const renderContext = { canvasContext: ctx, viewport: viewport };
-    await page.render(renderContext).promise;
-    drawAnnotations(viewport.width, viewport.height);
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "{{ config.PDFJS_WORKER }}";
+      const loadingTask = pdfjsLib.getDocument(url);
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(pageIndex + 1);
+      const viewport = page.getViewport({ scale: 1.5 });
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const renderContext = { canvasContext: ctx, viewport: viewport };
+      await page.render(renderContext).promise;
+      drawAnnotations(viewport.width, viewport.height);
+    } catch (e) {
+      // Fallback to <embed>
+      canvas.style.display = 'none';
+      const cont = document.querySelector('.viewer-container');
+      let emb = document.getElementById('pdfEmbed');
+      if (!emb) {
+        emb = document.createElement('embed');
+        emb.id = 'pdfEmbed';
+        emb.type = 'application/pdf';
+        emb.src = url;
+        emb.style.width = '100%';
+        emb.style.height = '75vh';
+        cont.insertBefore(emb, overlay);
+      }
+      const resize = () => {
+        const r = emb.getBoundingClientRect();
+        overlay.setAttribute('viewBox', `0 0 ${r.width} ${r.height}`);
+        drawAnnotations(r.width, r.height);
+      };
+      resize();
+      window.addEventListener('resize', resize);
+    }
   }
   renderPage();
 </script>

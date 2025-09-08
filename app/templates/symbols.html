@@ -7,7 +7,7 @@
     <div class="card h-100">
       <div class="card-body">
         <div class="h5">{{ s.name }}</div>
-        <div class="display-6">{{ s.unicode_glyph_or_svg }}</div>
+        <div class="display-6">{{ s.unicode_glyph_or_svg | safe }}</div>
         <div class="small text-muted">{{ s.what_it_controls }}</div>
       </div>
       <div class="card-footer">

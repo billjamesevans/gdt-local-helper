@@ -76,43 +76,94 @@ def explain_requirement(r: Requirement) -> str:
     return ' '.join([s] + extra)
 
 def compute_insights(project: Project, requirements: List[Requirement]) -> List[Dict[str, Any]]:
-    insights = []
+    insights: List[Dict[str, Any]] = []
+
+    def add(kind: str, title: str, detail: str, severity: str = 'info', req: Optional[Requirement] = None, code: Optional[str] = None):
+        insights.append({
+            'kind': kind,
+            'title': title,
+            'detail': detail,
+            'severity': severity,
+            'requirement_id': (req.id if req else None),
+            'code': code,
+        })
+
     # Bonus tolerance explainer for MMC/LMC
     for r in requirements:
         if r.material_condition in ('MMC','LMC') and r.tolerance_value is not None:
-            cond = 'MMC' if r.material_condition == 'MMC' else 'LMC'
-            example = f"If the actual size departs from {cond} by +0.1, the available tolerance increases to {Decimal(r.tolerance_value) + Decimal('0.1')} (bonus)."
-            insights.append({
-                'kind': 'bonus',
-                'title': f"Bonus tolerance at {r.material_condition}",
-                'detail': example,
-                'requirement_id': r.id
-            })
-    # Datum completeness for position
+            cond = r.material_condition
+            example = f"If actual size departs from {cond} by +0.1, available tolerance increases to {Decimal(r.tolerance_value) + Decimal('0.1')} (bonus)."
+            add('bonus', f"Bonus tolerance at {cond}", example, 'tip', r, 'BONUS_TOL')
+
+    # Datum completeness/order/diameter for position
     for r in requirements:
         if r.symbol_key == 'position':
             datums = r.datum_refs or []
             if len(datums) == 0:
-                insights.append({'kind': 'datum', 'title': 'Position without datum', 'detail': 'Add at least one datum (e.g., A|B|C).', 'requirement_id': r.id})
-            if datums != sorted(datums):
-                insights.append({'kind': 'datum_order', 'title': 'Non-ordered datums', 'detail': 'Order datums A→Z to reflect precedence.', 'requirement_id': r.id})
+                add('datum', 'Position without datum', 'Add at least one datum (e.g., A|B|C).', 'warning', r, 'POS_NO_DATUM')
+            if datums and datums != sorted(datums):
+                add('datum_order', 'Non-ordered datums', 'Order datums A→Z to reflect precedence.', 'tip', r, 'DATUM_ORDER')
             if r.diameter_modifier_bool is False:
-                insights.append({'kind': 'diameter', 'title': 'Position without ⌀', 'detail': 'Holes typically use ⌀ for the position zone.', 'requirement_id': r.id})
-    # Over-specification: form duplication under profile
+                add('diameter', 'Position without ⌀', 'Holes typically use ⌀ for the position zone.', 'tip', r, 'POS_NO_DIAMETER')
+            if r.tolerance_value is None:
+                add('tolerance', 'Missing tolerance value', 'Position requires a tolerance value.', 'error', r, 'POS_NO_TOL')
+
+    # Symbols that generally require a tolerance value
+    tol_expected = {'perpendicularity','parallelism','angularity','profile_line','profile_surface','circular_runout','total_runout','cylindricity','circularity'}
+    for r in requirements:
+        if r.symbol_key in tol_expected and r.tolerance_value is None:
+            add('tolerance', f"Missing tolerance for {r.symbol_key.replace('_',' ')}", 'Specify a non-zero tolerance value.', 'warning', r, 'MISS_TOL')
+
+    # Over-specification: profile + form controls
     keys = [r.symbol_key for r in requirements]
     if 'profile_surface' in keys and any(k in keys for k in ['flatness','straightness','circularity','cylindricity']):
-        insights.append({'kind': 'over_spec', 'title': 'Possible over-specification', 'detail': 'Profile may already control form; check if form controls are redundant.'})
+        add('over_spec', 'Possible over-specification', 'Profile may already control form; check if form controls are redundant.', 'tip', None, 'OVER_SPEC')
+
     # Legacy controls
     for r in requirements:
         if r.symbol_key in ('symmetry','concentricity'):
             alt = 'position/profile' if r.symbol_key == 'symmetry' else 'position (datum axis)'
-            insights.append({'kind': 'legacy', 'title': f"Legacy control: {r.symbol_key}", 'detail': f"Consider modern alternative: {alt}.", 'requirement_id': r.id})
-    # Consistency checks
+            add('legacy', f"Legacy control: {r.symbol_key}", f"Consider modern alternative: {alt}.", 'warning', r, 'LEGACY')
+
+    # Inadmissible datum usage on form-only controls
+    for r in requirements:
+        if r.symbol_key in ('flatness','straightness','circularity','cylindricity') and r.datum_refs:
+            add('datum', 'Datum on form-only control', 'Form controls do not reference datums.', 'warning', r, 'FORM_WITH_DATUM')
+
+    # Datum duplicates
+    for r in requirements:
+        if r.datum_refs and len(set(r.datum_refs)) != len(r.datum_refs):
+            add('datum', 'Repeated datum in reference frame', 'Avoid repeating the same datum in DRF unless intentional.', 'tip', r, 'DATUM_REPEAT')
+
     # Units mismatch
     proj_units = project.units
     for r in requirements:
         if r.tolerance_unit and r.tolerance_unit != proj_units:
-            insights.append({'kind': 'units', 'title': 'Unit mismatch', 'detail': f"Requirement in {r.tolerance_unit} but project is {proj_units}.", 'requirement_id': r.id})
+            add('units', 'Unit mismatch', f"Requirement in {r.tolerance_unit} but project is {proj_units}.", 'info', r, 'UNIT_MISMATCH')
+
+    # Duplicate requirement titles (possible duplicates)
+    seen: Dict[Tuple[str, str], int] = {}
+    for r in requirements:
+        key = (r.title.strip().lower(), r.symbol_key)
+        seen[key] = seen.get(key, 0) + 1
+    for (title, sym), count in seen.items():
+        if count > 1:
+            add('duplicate', 'Duplicate requirement titles', f"There are {count} '{title}' requirements with symbol {sym}.", 'tip', None, 'DUP_TITLES')
+
+    # Zone shape sanity hints
+    expected_zone = {
+        'flatness': 'planar',
+        'perpendicularity': 'planar',
+        'parallelism': 'planar',
+        'profile_surface': None,  # varies
+        'circularity': None,
+        'cylindricity': 'cylindrical',
+    }
+    for r in requirements:
+        exp = expected_zone.get(r.symbol_key)
+        if exp and r.zone_shape and r.zone_shape != exp:
+            add('zone', 'Unusual zone shape', f"{r.symbol_key.replace('_',' ').title()} usually uses {exp} zone shape.", 'tip', r, 'ZONE_SHAPE')
+
     return insights
 
 # Geometry helpers

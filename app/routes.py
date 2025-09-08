@@ -2,6 +2,8 @@ import os, io, json, uuid
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
 from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash, send_file, abort, jsonify
+from werkzeug.utils import safe_join
+from markupsafe import Markup
 from werkzeug.utils import secure_filename
 from PyPDF2 import PdfReader
 from sqlalchemy import or_, func
@@ -46,8 +48,55 @@ def check_upload_rate_limit():
 # -------------- Dashboard --------------
 @bp.route('/')
 def index():
-    projects = Project.query.order_by(Project.created_at.desc()).all()
-    return render_template('dashboard.html', projects=projects)
+    # Enhanced dashboard: search, totals, per-project counts, recent activity
+    try:
+        q = request.args.get('q', '').strip()
+        base = Project.query
+        if q:
+            like = f"%{q}%"
+            base = base.filter(
+                or_(Project.title.ilike(like), Project.customer.ilike(like), Project.notes.ilike(like))
+            )
+        projects = base.order_by(Project.updated_at.desc()).all()
+
+        totals = {
+            'projects': db.session.query(func.count(Project.id)).scalar() or 0,
+            'drawings': db.session.query(func.count(Drawing.id)).scalar() or 0,
+            'requirements': db.session.query(func.count(Requirement.id)).scalar() or 0,
+            'annotations': db.session.query(func.count(Annotation.id)).scalar() or 0,
+        }
+
+        ids = [p.id for p in projects]
+        draw_counts, req_counts = {}, {}
+        if ids:
+            for pid, c in db.session.query(Drawing.project_id, func.count(Drawing.id))\
+                                   .filter(Drawing.project_id.in_(ids))\
+                                   .group_by(Drawing.project_id):
+                draw_counts[pid] = c
+            for pid, c in db.session.query(Requirement.project_id, func.count(Requirement.id))\
+                                   .filter(Requirement.project_id.in_(ids))\
+                                   .group_by(Requirement.project_id):
+                req_counts[pid] = c
+
+        recent_drawings = Drawing.query.order_by(Drawing.uploaded_at.desc()).limit(5).all()
+        recent_requirements = Requirement.query.order_by(Requirement.created_at.desc()).limit(5).all()
+    except Exception:
+        projects = []
+        totals = {'projects': 0, 'drawings': 0, 'requirements': 0, 'annotations': 0}
+        draw_counts, req_counts = {}, {}
+        recent_drawings, recent_requirements = [], []
+        q = ''
+
+    return render_template(
+        'dashboard.html',
+        projects=projects,
+        totals=totals,
+        draw_counts=draw_counts,
+        req_counts=req_counts,
+        recent_drawings=recent_drawings,
+        recent_requirements=recent_requirements,
+        q=q,
+    )
 
 # -------------- Projects --------------
 @bp.route('/projects/new', methods=['GET','POST'])
@@ -87,9 +136,33 @@ def project_edit(id):
         project.units = request.form.get('units') or project.units
         project.notes = request.form.get('notes')
         db.session.commit()
+        if request.headers.get('HX-Request'):
+            # Return updated header partial for inline swap
+            return render_template('_project_header.html', project=project)
         flash('Project updated.', 'success')
         return redirect(url_for('main.project_detail', id=id))
+    # GET
+    if request.headers.get('HX-Request'):
+        return render_template('_project_edit_form.html', project=project)
     return render_template('project_edit.html', project=project)
+
+@bp.route('/projects/<int:id>/delete', methods=['POST'])
+def project_delete(id):
+    project = Project.query.get_or_404(id)
+    # Remove drawing files from disk
+    base = current_app.config['UPLOAD_FOLDER']
+    for d in list(project.drawings):
+        try:
+            path = safe_join(base, d.filename)
+            if path and os.path.exists(path):
+                os.remove(path)
+        except Exception:
+            pass
+    # Delete project cascades to drawings/requirements/annotations
+    db.session.delete(project)
+    db.session.commit()
+    flash('Project deleted.', 'success')
+    return redirect(url_for('main.index'))
 
 # -------------- Drawings (upload/list) --------------
 @bp.route('/projects/<int:id>/drawings', methods=['GET','POST'])
@@ -137,7 +210,8 @@ def project_drawings(id):
         except Exception:
             page_count = 1
 
-        drawing = Drawing(project_id=id, filename=stored_name, original_name=original_name, page_count=page_count)
+        base_title = os.path.splitext(original_name)[0]
+        drawing = Drawing(project_id=id, filename=stored_name, original_name=original_name, page_count=page_count, title=base_title)
         db.session.add(drawing)
         db.session.commit()
         flash('Drawing uploaded.', 'success')
@@ -146,10 +220,53 @@ def project_drawings(id):
     drawings = Drawing.query.filter_by(project_id=id).order_by(Drawing.uploaded_at.desc()).all()
     return render_template('drawings_list.html', project=project, drawings=drawings)
 
+@bp.route('/drawings/<int:id>/edit', methods=['GET','POST'])
+def drawing_edit(id):
+    d = Drawing.query.get_or_404(id)
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip() or None
+        notes = request.form.get('notes', '').strip() or None
+        new_filename = request.form.get('filename', '').strip()
+
+        d.title = title
+        d.notes = notes
+
+        if new_filename and new_filename != d.filename:
+            if not new_filename.lower().endswith('.pdf'):
+                new_filename += '.pdf'
+            safe_name = secure_filename(new_filename)
+            base = current_app.config['UPLOAD_FOLDER']
+            old_path = safe_join(base, d.filename)
+            new_path = safe_join(base, safe_name)
+            if os.path.exists(new_path):
+                name, ext = os.path.splitext(safe_name)
+                i = 1
+                while True:
+                    candidate = f"{name}_{i}{ext}"
+                    cand_path = safe_join(base, candidate)
+                    if not os.path.exists(cand_path):
+                        new_path = cand_path
+                        safe_name = candidate
+                        break
+                    i += 1
+            try:
+                if old_path and os.path.exists(old_path):
+                    os.rename(old_path, new_path)
+                d.filename = safe_name
+            except Exception as e:
+                flash(f'Failed to rename file: {e}', 'danger')
+        db.session.commit()
+        flash('Drawing updated.', 'success')
+        return redirect(url_for('main.drawing_annotate', id=d.id))
+
+    return render_template('drawing_edit.html', drawing=d)
+
 @bp.route('/uploads/<path:filename>')
 def uploaded_file(filename):
-    path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-    if not os.path.exists(path):
+    # Resolve path safely relative to configured upload folder
+    base = current_app.config['UPLOAD_FOLDER']
+    path = safe_join(base, filename)
+    if not path or not os.path.exists(path):
         abort(404)
     return send_file(path)
 
@@ -226,6 +343,7 @@ def requirement_detail(id):
 
 # Live FCF preview (HTMX endpoint)
 @bp.route('/fcf/preview', methods=['POST'])
+@csrf.exempt
 def fcf_preview():
     form = request.form
     symbol_key = form.get('symbol_key') or 'position'
@@ -253,7 +371,8 @@ def drawing_view(id):
         page = drawing.page_count - 1
     # Annotations for this page
     anns = Annotation.query.filter_by(drawing_id=drawing.id, page_index=page).all()
-    return render_template('drawing_view.html', drawing=drawing, page=page, annotations=anns)
+    anns_json = AnnotationSchema(many=True).dump(anns)
+    return render_template('drawing_view.html', drawing=drawing, page=page, annotations_json=anns_json)
 
 @bp.route('/drawings/<int:id>/annotate')
 def drawing_annotate(id):
@@ -264,9 +383,29 @@ def drawing_annotate(id):
     # All project requirements to link
     reqs = Requirement.query.filter_by(project_id=drawing.project_id).order_by(Requirement.created_at.desc()).all()
     anns = Annotation.query.filter_by(drawing_id=drawing.id, page_index=page).all()
-    return render_template('drawing_annotate.html', drawing=drawing, page=page, requirements=reqs, annotations=anns)
+    anns_json = AnnotationSchema(many=True).dump(anns)
+    return render_template('drawing_annotate.html', drawing=drawing, page=page, requirements=reqs, annotations=anns, annotations_json=anns_json)
+
+@bp.route('/drawings/<int:id>/delete', methods=['POST'])
+def drawing_delete(id):
+    d = Drawing.query.get_or_404(id)
+    project_id = d.project_id
+    # Remove file from disk if present
+    try:
+        base = current_app.config['UPLOAD_FOLDER']
+        path = safe_join(base, d.filename)
+        if path and os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass
+    # Delete DB row (annotations cascade via FK)
+    db.session.delete(d)
+    db.session.commit()
+    flash('Drawing deleted.', 'success')
+    return redirect(url_for('main.project_drawings', id=project_id))
 
 @bp.route('/annotations', methods=['POST'])
+@csrf.exempt
 def create_annotation():
     # HTMX post
     raw = request.get_json(silent=True) or {}
@@ -319,6 +458,14 @@ def symbols():
     path = os.path.join(current_app.root_path, 'knowledge', 'gdt_knowledge.json')
     with open(path, 'r') as f:
         kb = json.load(f)
+    # Ensure inline SVG renders as markup, not text
+    try:
+        for s in kb.get('symbols', []):
+            val = s.get('unicode_glyph_or_svg')
+            if isinstance(val, str) and val.lstrip().startswith('<svg'):
+                s['unicode_glyph_or_svg'] = Markup(val)
+    except Exception:
+        pass
     return render_template('symbols.html', kb=kb)
 
 # -------------- Insights --------------

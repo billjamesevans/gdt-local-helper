@@ -9,6 +9,7 @@
 
 {% if project %}
 <form method="post" class="mb-4">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% include '_fcf_form.html' %}
 </form>
 {% endif %}

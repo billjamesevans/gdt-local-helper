@@ -1,21 +1,90 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1 class="h4">Insights — {{ project.title }}</h1>
-<div class="list-group">
-  {% for i in items %}
-  <div class="list-group-item">
-    <div class="d-flex justify-content-between">
-      <div>
-        <div class="fw-bold">{{ i.title }}</div>
-        <div class="small text-muted">{{ i.detail }}</div>
-      </div>
-      {% if i.requirement_id %}
-      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.requirement_detail', id=i.requirement_id) }}">Open</a>
-      {% endif %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Insights — {{ project.title }}</h1>
+  <a class="btn btn-outline-secondary" href="{{ url_for('main.project_detail', id=project.id) }}"><i class="bi bi-arrow-left"></i> Back to Project</a>
+  </div>
+
+{% set totals = {
+  'errors': (items | selectattr('severity','equalto','error') | list | length),
+  'warnings': (items | selectattr('severity','equalto','warning') | list | length),
+  'tips': (items | selectattr('severity','equalto','tip') | list | length),
+  'info': (items | selectattr('severity','equalto','info') | list | length),
+} %}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm text-bg-danger-subtle">
+      <div class="card-body d-flex align-items-center"><i class="bi bi-x-octagon fs-3 me-3 text-danger"></i><div><div class="fw-bold">Errors</div><div class="fs-5">{{ totals.errors }}</div></div></div>
     </div>
   </div>
-  {% else %}
-  <div class="list-group-item">No insights for this project yet.</div>
-  {% endfor %}
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm text-bg-warning-subtle">
+      <div class="card-body d-flex align-items-center"><i class="bi bi-exclamation-triangle fs-3 me-3 text-warning"></i><div><div class="fw-bold">Warnings</div><div class="fs-5">{{ totals.warnings }}</div></div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm text-bg-info-subtle">
+      <div class="card-body d-flex align-items-center"><i class="bi bi-lightbulb fs-3 me-3 text-info"></i><div><div class="fw-bold">Tips</div><div class="fs-5">{{ totals.tips }}</div></div></div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body d-flex align-items-center"><i class="bi bi-info-circle fs-3 me-3 text-secondary"></i><div><div class="fw-bold">Info</div><div class="fs-5">{{ totals.info }}</div></div></div>
+    </div>
+  </div>
 </div>
+
+{% set sev_badge = {
+  'error': 'text-bg-danger',
+  'warning': 'text-bg-warning',
+  'tip': 'text-bg-info',
+  'info': 'text-bg-secondary',
+} %}
+
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Findings</span>
+    <div class="btn-group btn-group-sm" role="group">
+      <button class="btn btn-outline-secondary" onclick="filterInsights('all')">All</button>
+      <button class="btn btn-outline-danger" onclick="filterInsights('error')">Errors</button>
+      <button class="btn btn-outline-warning" onclick="filterInsights('warning')">Warnings</button>
+      <button class="btn btn-outline-info" onclick="filterInsights('tip')">Tips</button>
+      <button class="btn btn-outline-secondary" onclick="filterInsights('info')">Info</button>
+    </div>
+  </div>
+  <ul class="list-group list-group-flush" id="insightList">
+    {% for i in items %}
+    <li class="list-group-item" data-sev="{{ i.severity or 'info' }}">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="me-3">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge {{ sev_badge.get(i.severity or 'info') }}">{{ (i.severity or 'info')|title }}</span>
+            <strong>{{ i.title }}</strong>
+            {% if i.code %}<span class="badge text-bg-light">{{ i.code }}</span>{% endif %}
+          </div>
+          <div class="small text-muted mt-1">{{ i.detail }}</div>
+        </div>
+        <div class="btn-group btn-group-sm">
+          {% if i.requirement_id %}
+          <a class="btn btn-outline-secondary" href="{{ url_for('main.requirement_detail', id=i.requirement_id) }}">Open</a>
+          {% endif %}
+        </div>
+      </div>
+    </li>
+    {% else %}
+    <li class="list-group-item">No insights for this project yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<script>
+  function filterInsights(sev) {
+    const items = document.querySelectorAll('#insightList > li');
+    items.forEach(li => {
+      const s = li.getAttribute('data-sev') || 'info';
+      li.style.display = (sev === 'all' || s === sev) ? '' : 'none';
+    });
+  }
+</script>
 {% endblock %}

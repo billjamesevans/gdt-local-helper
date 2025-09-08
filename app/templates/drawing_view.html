@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1 class="h5 mb-3">Viewer — {{ drawing.original_name }} (Page {{ page+1 }}/{{ drawing.page_count }})</h1>
+<h1 class="h5 mb-3">Viewer — {{ drawing.title or drawing.original_name }} (Page {{ page+1 }}/{{ drawing.page_count }})</h1>
 <div class="d-flex gap-2 mb-2">
   <div class="btn-group">
     {% for p in range(drawing.page_count) %}
@@ -19,17 +19,22 @@
 
 <script src="{{ config.PDFJS_JS }}"></script>
 <script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc = "{{ config.PDFJS_WORKER }}";
   const url = "{{ url_for('main.uploaded_file', filename=drawing.filename) }}";
   const pageIndex = {{ page }};
   const overlay = document.getElementById('overlay');
   const canvas = document.getElementById('pdfCanvas');
   const ctx = canvas.getContext('2d');
 
+  function getViewportEl() {
+    return document.getElementById('pdfCanvas').style.display === 'none'
+      ? document.getElementById('pdfEmbed')
+      : document.getElementById('pdfCanvas');
+  }
+
   function drawAnnotations(width, height) {
     overlay.setAttribute('viewBox', `0 0 ${width} ${height}`);
     overlay.innerHTML = '';
-    const anns = {{ annotations|tojson }};
+    const anns = {{ annotations_json|tojson }};
     anns.forEach(a => {
       if (a.kind === 'box') {
         const x = a.coords_json.x * width;
@@ -68,17 +73,51 @@
     });
   }
 
-  async function renderPage() {
-    const loadingTask = pdfjsLib.getDocument(url);
-    const pdf = await loadingTask.promise;
-    const page = await pdf.getPage(pageIndex + 1);
-    const viewport = page.getViewport({ scale: 1.5 });
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const renderContext = { canvasContext: ctx, viewport: viewport };
-    await page.render(renderContext).promise;
-    drawAnnotations(viewport.width, viewport.height);
+  async function renderWithPdfjs() {
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "{{ config.PDFJS_WORKER }}";
+      const loadingTask = pdfjsLib.getDocument(url);
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(pageIndex + 1);
+      const viewport = page.getViewport({ scale: 1.5 });
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const renderContext = { canvasContext: ctx, viewport: viewport };
+      await page.render(renderContext).promise;
+      drawAnnotations(viewport.width, viewport.height);
+    } catch (e) {
+      fallbackEmbed();
+    }
   }
-  renderPage();
+
+  function fallbackEmbed() {
+    // Hide canvas, use built-in PDF viewer via <embed>
+    canvas.style.display = 'none';
+    const cont = document.querySelector('.viewer-container');
+    let emb = document.getElementById('pdfEmbed');
+    if (!emb) {
+      emb = document.createElement('embed');
+      emb.id = 'pdfEmbed';
+      emb.type = 'application/pdf';
+      emb.src = url;
+      emb.style.width = '100%';
+      emb.style.height = '75vh';
+      cont.insertBefore(emb, overlay);
+    }
+    const resize = () => {
+      const r = emb.getBoundingClientRect();
+      overlay.setAttribute('viewBox', `0 0 ${r.width} ${r.height}`);
+      drawAnnotations(r.width, r.height);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+  }
+
+  if (window.pdfjsLib) {
+    renderWithPdfjs();
+  } else {
+    // If PDF.js didn't load (offline), fallback to embed
+    fallbackEmbed();
+  }
 </script>
 {% endblock %}

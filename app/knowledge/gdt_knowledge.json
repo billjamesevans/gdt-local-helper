@@ -1,114 +1,156 @@
 {
   "symbols": [
     {
-      "key": "position",
-      "name": "Position",
-      "unicode_glyph_or_svg": "\u27c2\u29bf",
-      "what_it_controls": "Location of a feature relative to datums",
-      "zone_shape": "cylindrical",
-      "typical_use": "Holes, pins, patterns relative to datum reference frame",
-      "do_dont": [
-        "Do reference a proper datum set",
-        "Don't forget \u2300 for holes"
-      ],
-      "mini_example": "\u23000.2 | M | A | B | C",
-      "figure": "A hole located relative to datums A|B|C"
+      "key": "straightness",
+      "name": "Straightness",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><line x1='8' y1='32' x2='56' y2='32' stroke='currentColor' stroke-width='6' stroke-linecap='round'/></svg>",
+      "what_it_controls": "Form of a line element (or axis) without datums",
+      "zone_shape": "line or cylinder (axis)",
+      "typical_use": "Shaft axis, edges, guideways",
+      "do_dont": ["Do use on individual elements","Don't use datums with straightness"],
+      "mini_example": "0.05",
+      "figure": "Two parallel lines bounding a line element"
     },
     {
       "key": "flatness",
       "name": "Flatness",
-      "unicode_glyph_or_svg": "\u2394",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><polygon points='14,22 52,22 44,42 6,42' fill='none' stroke='currentColor' stroke-width='4'/></svg>",
       "what_it_controls": "Form of a surface independent of datums",
-      "zone_shape": "planar",
+      "zone_shape": "two parallel planes",
       "typical_use": "Mating faces, pads",
-      "do_dont": [
-        "Do apply to surfaces where straightness isn't sufficient",
-        "Don't use with datums"
-      ],
+      "do_dont": ["Do use for planar surfaces","Don't reference datums"],
       "mini_example": "0.1",
       "figure": "Two parallel planes 0.1 apart"
     },
     {
+      "key": "circularity",
+      "name": "Circularity (Roundness)",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><circle cx='32' cy='32' r='18' fill='none' stroke='currentColor' stroke-width='4'/></svg>",
+      "what_it_controls": "Form of individual circular elements",
+      "zone_shape": "two concentric circles",
+      "typical_use": "Round features at a section",
+      "do_dont": ["Do measure per cross-section","Don't use datums"],
+      "mini_example": "0.02",
+      "figure": "Radial distance between two circles"
+    },
+    {
+      "key": "cylindricity",
+      "name": "Cylindricity",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><circle cx='32' cy='32' r='18' fill='none' stroke='currentColor' stroke-width='4'/><circle cx='32' cy='32' r='12' fill='none' stroke='currentColor' stroke-width='2'/></svg>",
+      "what_it_controls": "Form of an entire cylindrical surface",
+      "zone_shape": "two coaxial cylinders",
+      "typical_use": "Shafts, bores",
+      "do_dont": ["Do use when roundness+straightness+parallelism are needed","Don't use with datums"],
+      "mini_example": "0.05",
+      "figure": "Coaxial cylindrical zone"
+    },
+    {
+      "key": "profile_line",
+      "name": "Profile of a Line",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><path d='M4 44 C 14 24, 30 64, 44 36 S 60 28, 60 28' fill='none' stroke='currentColor' stroke-width='4'/></svg>",
+      "what_it_controls": "2D outline at each cross-section (may use datums)",
+      "zone_shape": "two curves around true profile",
+      "typical_use": "Sectional profiles of complex parts",
+      "do_dont": ["Do use for cross-sectional control","Don't confuse with surface profile"],
+      "mini_example": "0.2 | A | B",
+      "figure": "Uniform boundary around a line element"
+    },
+    {
       "key": "profile_surface",
       "name": "Profile of a Surface",
-      "unicode_glyph_or_svg": "\u223f",
-      "what_it_controls": "3D form relative to basic dimensions; can include datums",
-      "zone_shape": "cylindrical",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><path d='M4 44 C 14 24, 30 64, 44 36 S 60 28, 60 28' fill='none' stroke='currentColor' stroke-width='4'/><path d='M4 40 C 14 20, 30 60, 44 32 S 60 24, 60 24' fill='none' stroke='currentColor' stroke-width='2' opacity='0.6'/></svg>",
+      "what_it_controls": "3D form relative to basic dimensions; may include datums",
+      "zone_shape": "two offset surfaces",
       "typical_use": "Freeform or complex surfaces",
-      "do_dont": [
-        "Do use to control form and sometimes orientation/location",
-        "Don't pair with redundant form controls"
-      ],
+      "do_dont": ["Do use to control form and sometimes orientation/location","Don't pair with redundant form controls"],
       "mini_example": "0.5 | A | B",
       "figure": "Uniform boundary around the true surface"
     },
     {
-      "key": "circular_runout",
-      "name": "Circular Runout",
-      "unicode_glyph_or_svg": "\u25f4",
-      "what_it_controls": "Composite of form and orientation for each circular element",
-      "zone_shape": "cylindrical",
-      "typical_use": "Rotating parts",
-      "do_dont": [
-        "Do measure per revolution",
-        "Don't confuse with total runout"
-      ],
-      "mini_example": "0.02 | A",
-      "figure": "TIR measured at each cross-section"
-    },
-    {
-      "key": "total_runout",
-      "name": "Total Runout",
-      "unicode_glyph_or_svg": "\u25ce",
-      "what_it_controls": "Composite of all circular runout elements across the full surface",
-      "zone_shape": "cylindrical",
-      "typical_use": "Shafts, rotating assemblies",
-      "do_dont": [
-        "Do evaluate across the full length",
-        "Don't use when circular runout suffices"
-      ],
-      "mini_example": "0.05 | A",
-      "figure": "TIR across complete surface"
+      "key": "angularity",
+      "name": "Angularity",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><path d='M14 50 L50 14' stroke='currentColor' stroke-width='4'/><path d='M14 50 L50 50' stroke='currentColor' stroke-width='4'/></svg>",
+      "what_it_controls": "Orientation at a specified angle to a datum",
+      "zone_shape": "two parallel planes at angle",
+      "typical_use": "Chamfers, angled pads",
+      "do_dont": ["Do specify basic angle","Don't omit datum"],
+      "mini_example": "0.1 | A",
+      "figure": "Zone oriented at basic angle to datum"
     },
     {
       "key": "perpendicularity",
       "name": "Perpendicularity",
-      "unicode_glyph_or_svg": "\u27c2",
-      "what_it_controls": "Orientation of a surface or axis at 90\u00b0",
-      "zone_shape": "planar",
-      "typical_use": "Faces orthogonal to datum",
-      "do_dont": [
-        "Do reference a planar datum",
-        "Don't omit datum where needed"
-      ],
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><path d='M18 10 L18 54' stroke='currentColor' stroke-width='4'/><path d='M18 46 L54 46' stroke='currentColor' stroke-width='4'/></svg>",
+      "what_it_controls": "Orientation of a surface/axis at 90° to a datum",
+      "zone_shape": "two parallel planes (or cylinder for axis)",
+      "typical_use": "Faces orthogonal to a datum",
+      "do_dont": ["Do reference a planar datum","Don't omit datum where needed"],
       "mini_example": "0.1 | A",
-      "figure": "Zone of two planes perpendicular to A"
+      "figure": "Zone perpendicular to A"
+    },
+    {
+      "key": "parallelism",
+      "name": "Parallelism",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><path d='M12 20 L52 20' stroke='currentColor' stroke-width='4'/><path d='M12 44 L52 44' stroke='currentColor' stroke-width='4'/></svg>",
+      "what_it_controls": "Orientation parallel to a datum",
+      "zone_shape": "two parallel planes (or cylinder for axis)",
+      "typical_use": "Guideways, mating faces",
+      "do_dont": ["Do use with a datum","Don't confuse with flatness"],
+      "mini_example": "0.05 | A",
+      "figure": "Zone parallel to datum A"
+    },
+    {
+      "key": "position",
+      "name": "Position",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><circle cx='32' cy='32' r='18' fill='none' stroke='currentColor' stroke-width='4'/><line x1='32' y1='10' x2='32' y2='54' stroke='currentColor' stroke-width='4'/><line x1='10' y1='32' x2='54' y2='32' stroke='currentColor' stroke-width='4'/></svg>",
+      "what_it_controls": "Location of a feature relative to datums",
+      "zone_shape": "cylindrical (holes/pins) or rectangular",
+      "typical_use": "Holes, pins, patterns relative to DRF",
+      "do_dont": ["Do reference a proper datum set","Don't forget ⌀ for holes"],
+      "mini_example": "⌀0.2 | M | A | B | C",
+      "figure": "A hole located relative to datums A|B|C"
+    },
+    {
+      "key": "circular_runout",
+      "name": "Circular Runout",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><circle cx='32' cy='32' r='16' fill='none' stroke='currentColor' stroke-width='4'/><path d='M48 16 A20 20 0 0 1 54 32' fill='none' stroke='currentColor' stroke-width='4' marker-end='url(#arrow)'/><defs><marker id='arrow' markerWidth='8' markerHeight='8' refX='4' refY='4' orient='auto-start-reverse'><path d='M0,0 L8,4 L0,8 z' fill='currentColor'/></marker></defs></svg>",
+      "what_it_controls": "Composite of form and orientation per circular element",
+      "zone_shape": "two coaxial circles per section",
+      "typical_use": "Rotating parts",
+      "do_dont": ["Do measure per revolution","Don't confuse with total runout"],
+      "mini_example": "0.02 | A",
+      "figure": "TIR per cross-section"
+    },
+    {
+      "key": "total_runout",
+      "name": "Total Runout",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><circle cx='32' cy='32' r='16' fill='none' stroke='currentColor' stroke-width='4'/><path d='M18 14 A24 24 0 0 1 50 14' fill='none' stroke='currentColor' stroke-width='4' marker-end='url(#ar2)'/><path d='M14 50 A24 24 0 0 0 50 50' fill='none' stroke='currentColor' stroke-width='4' marker-end='url(#ar2)'/><defs><marker id='ar2' markerWidth='8' markerHeight='8' refX='4' refY='4' orient='auto-start-reverse'><path d='M0,0 L8,4 L0,8 z' fill='currentColor'/></marker></defs></svg>",
+      "what_it_controls": "Composite of all circular runout elements across full surface",
+      "zone_shape": "two coaxial cylinders",
+      "typical_use": "Shafts, rotating assemblies",
+      "do_dont": ["Do evaluate across full length","Don't use when circular runout suffices"],
+      "mini_example": "0.05 | A",
+      "figure": "TIR across complete surface"
     },
     {
       "key": "concentricity",
       "name": "Concentricity (legacy)",
-      "unicode_glyph_or_svg": "\u25ce (legacy)",
-      "what_it_controls": "Median points of opposed elements about a datum axis",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><circle cx='32' cy='32' r='18' fill='none' stroke='currentColor' stroke-width='4'/><circle cx='32' cy='32' r='6' fill='currentColor'/></svg>",
+      "what_it_controls": "Median points about a datum axis (difficult to inspect)",
       "zone_shape": "cylindrical",
       "typical_use": "Legacy; rarely recommended",
-      "do_dont": [
-        "Prefer position with datums",
-        "Avoid due to inspection difficulty"
-      ],
+      "do_dont": ["Prefer position with datums","Avoid due to inspection difficulty"],
       "mini_example": "0.1 | A",
       "figure": "Not recommended in Y14.5-2018"
     },
     {
       "key": "symmetry",
       "name": "Symmetry (legacy)",
-      "unicode_glyph_or_svg": "\u2261 (legacy)",
-      "what_it_controls": "Median plane of opposed elements",
+      "unicode_glyph_or_svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='48' height='48'><path d='M32 8 L32 56' stroke='currentColor' stroke-width='3'/><path d='M12 28 L32 36 L12 44 Z' fill='currentColor'/><path d='M52 28 L32 36 L52 44 Z' fill='currentColor'/></svg>",
+      "what_it_controls": "Median plane of opposed elements (difficult to inspect)",
       "zone_shape": "planar",
       "typical_use": "Legacy; rarely recommended",
-      "do_dont": [
-        "Prefer position/profile",
-        "Avoid due to inspection burden"
-      ],
+      "do_dont": ["Prefer position/profile","Avoid due to inspection burden"],
       "mini_example": "0.2 | A",
       "figure": "Not recommended in Y14.5-2018"
     }

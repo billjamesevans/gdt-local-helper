@@ -2,6 +2,7 @@
 {% block content %}
 <h1 class="h4">Drawings — {{ project.title }}</h1>
 <form method="post" enctype="multipart/form-data" class="my-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="input-group">
     <input class="form-control" type="file" name="pdf" accept="application/pdf" required>
     <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Upload</button>
@@ -10,16 +11,14 @@
 </form>
 <div class="list-group">
   {% for d in drawings %}
-  <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="{{ url_for('main.drawing_view', id=d.id) }}">
-    <div>
-      <div class="fw-bold">{{ d.original_name }}</div>
-      <div class="text-muted small">Pages: {{ d.page_count }}</div>
+  <div class="list-group-item d-flex justify-content-between align-items-center">
+    <div class="me-3">
+      <div class="fw-bold">{{ d.title or d.original_name }}</div>
+      <div class="text-muted small">File: {{ d.filename }} • Pages: {{ d.page_count }}</div>
+      {% if d.notes %}<div class="small">{{ d.notes }}</div>{% endif %}
     </div>
-    <div>
-      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.drawing_view', id=d.id) }}"><i class="bi bi-eye"></i> View</a>
-      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.drawing_annotate', id=d.id) }}"><i class="bi bi-vector-pen"></i> Annotate</a>
-    </div>
-  </a>
+    {% set d = d %}{% include '_drawing_actions.html' %}
+  </div>
   {% else %}
   <div class="alert alert-info">No drawings yet.</div>
   {% endfor %}

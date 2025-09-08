@@ -10,6 +10,7 @@
   <div class="mt-1">{{ explanation }}</div>
 </div>
 <form method="post" class="card p-3 mb-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="mb-2">
     <label class="form-label">Title</label>
     <input class="form-control" name="title" value="{{ r.title }}">
