@@ -4,8 +4,7 @@ from decimal import Decimal
 from app.utils import compute_insights
 
 def test_insights_flags_legacy_and_bonus(client):
-    from app import create_app
-    app = create_app()
+    app = client.application
     with app.app_context():
         p = Project(title='T', units='mm')
         db.session.add(p); db.session.commit()
